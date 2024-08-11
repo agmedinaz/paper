@@ -326,8 +326,8 @@ class DenseNeuralNetworkGen:
     def evaluate(self, x_test, y_test):
         return self.model.evaluate(x_test, y_test)
 
-    def predict(self, x):
-        return self.model.predict(x)
+    def predict(self, x, verbose=True):
+        return self.model.predict(x, verbose=verbose)
 
     def model_saver(self, name):
         if name[-3:] != 'h5':
