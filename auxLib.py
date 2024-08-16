@@ -320,23 +320,44 @@ class DenseNeuralNetworkGen:
     def compile(self, optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy']):
         self.model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
-    def fit(self, x_train, y_train, epochs=10, batch_size=32, validation_data=None):
-        self.model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=validation_data)
+    def fit(self, x_train, y_train, epochs=10, batch_size=32, validation_data=None, callbacks=None):
+        self.model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=validation_data, callbacks=callbacks)
 
     def evaluate(self, x_test, y_test):
         return self.model.evaluate(x_test, y_test)
 
     def predict(self, x, verbose=True):
         return self.model.predict(x, verbose=verbose)
-
+    '''
     def model_saver(self, name):
-        if name[-3:] != 'h5':
-            name += '.h5'
+        if name_of_file[-3:] != 'h5':
+            name_of_file += '.h5'
+
         if not os.path.exists('models'):
             os.makedirs('models')
         path = os.path.join(os.getcwd(), 'models', name)
         self.model.save(path)
+    '''
+    def model_saver(self, name_of_file, directory=None):
+        if name_of_file[-3:] != 'h5':
+            name_of_file += '.h5'
 
+        if directory is None:
+            directory = datetime.now().strftime('%Y-%m-%d')
+            directory = os.path.join(directory, 'models')
+
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+        base_name = name_of_file.strip()
+        existing_files = [f for f in os.listdir(directory) if f.startswith(base_name) and f.endswith('.h5')]
+        name_suffix = len(existing_files) + 1
+        name = f"{base_name}_run{name_suffix}.h5"  # if we want to do more than one run for the same model.
+
+        file_path = os.path.join(os.getcwd(), directory, name_of_file)
+        self.model.save(file_path)
+        print("Model saved as", file_path)
+    
     def weights_saver(self, name):
         if name[-3:] != 'h5':
             name += '.h5'
