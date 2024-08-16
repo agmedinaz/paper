@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 import matplotlib.gridspec as gridspec
@@ -6,7 +7,7 @@ import random
 import os
 import time
 
-
+import keras
 from keras.models import Sequential
 from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, Conv2DTranspose
 
@@ -18,6 +19,8 @@ from datetime import datetime
 
 print("Importing library...")
 
+
+# SYNTHETIC IMAGES GENERATOR
 class SyntheticImagesGen:
     '''
     Some examples on how to use SyntheticImagesGen class.
@@ -139,6 +142,7 @@ class SyntheticImagesGen:
         print("Elapsed time:", elapsed_time, "seconds")
         return np.array(train_images), np.array(train_labels)
 
+# LOADER AND SAVER
 
 class loader_and_saver:
     '''
@@ -224,6 +228,7 @@ class loader_and_saver:
         
         return simImages, temperature
     
+# PLOTTING
 
 def latticeGraph(squareLattice: list, size=40):
     """
@@ -267,6 +272,8 @@ def latticeGraph(squareLattice: list, size=40):
     plt.show()
     return
 
+
+# DENSE NEURAL NETWORKS
 
 class DenseNeuralNetworkGen:
     def __init__(self, input_shape, num_classes, layers=None):
@@ -321,7 +328,10 @@ class DenseNeuralNetworkGen:
         self.model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
     def fit(self, x_train, y_train, epochs=10, batch_size=32, validation_data=None, callbacks=None):
-        self.model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=validation_data, callbacks=callbacks)
+        self.model.fit(x_train, y_train, epochs=epochs, 
+                    batch_size=batch_size, 
+                    validation_data=validation_data, 
+                    callbacks=callbacks)
 
     def evaluate(self, x_test, y_test):
         return self.model.evaluate(x_test, y_test)
@@ -372,5 +382,67 @@ class DenseNeuralNetworkGen:
 
     def summary(self):
         self.model.summary()
+
+
+# CALLBACK
+class myCallback(keras.callbacks.Callback):
+    def on_epoch_end(self, epoch, logs={}):
+
+        if(logs.get('val_accuracy') > 0.999):
+            print("\nAccuracy is high enough, so cancelling training!")
+            self.model.stop_training = True
+
+
+
+
+
+
+# PREDICTOR
+
+def predictor(L, model, sim_images, neurons, 
+                        directory=None, reshape = True, 
+                        verbose=False, save_prediction=False):
+    '''
+    reshape: only if we need to flatten the array, otherwise, it is not needed.
+
+    verbose: if we want to see the progress of the prediction.
+    '''
+    if reshape:
+        sim_images = [array.reshape((251, L*L)) for array in sim_images]
+        
+    prediction = model.predict(sim_images[0], verbose=verbose)/len(sim_images)
+    for i in tqdm(range(1, len(sim_images)), 
+                            desc="Predicting", unit="repetitions"):
+        sim_im = sim_images[i]
+        prediction += model.predict(sim_im, verbose=verbose)/len(sim_images)
+
+    if directory is None:
+        directory = datetime.now().strftime('%Y-%m-%d')
+        directory = os.path.join(directory, 'predictions')
+
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+        
+    if save_prediction:
+        temperature = np.arange(0.0, 5.02, 0.02).reshape(251,1)#.tolist()
+        combined_array = np.concatenate((temperature, prediction), axis=1) #np.hstack((temperature, prediction))
+        prediction_df = pd.DataFrame(combined_array, columns=['Temperature', 'Paramagnetic', 'Ferromagnetic', 'Neel', 'Stripe'])
+        prediction_df.to_csv(os.path.join(os.getcwd(), directory, f'predictions_{neurons}.csv'), index=False)
+    
+    return prediction
+
+
+def folders(directory=None):
+
+    if directory is None:
+        resultsfolder = os.path.join(os.getcwd(), datetime.now().strftime('%Y-%m-%d') , 'predictions')
+        modelsfolder = os.path.join(os.getcwd(), datetime.now().strftime('%Y-%m-%d') , 'models')
+    else:
+        resultsfolder = os.path.join(os.getcwd(), directory, 'predictions')
+        modelsfolder = os.path.join(os.getcwd(), directory, 'models')
+
+    os.makedirs(resultsfolder, exist_ok = True)
+    os.makedirs(modelsfolder, exist_ok = True)
+    return modelsfolder, resultsfolder
 
 print("Library successfully imported")
