@@ -9,8 +9,8 @@ import time
 
 import keras
 from keras.models import Sequential
+from keras.models import load_model as keras_load_model
 from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, Conv2DTranspose
-
 
 import h5py
 from tqdm import tqdm
@@ -247,7 +247,7 @@ def latticeGraph(squareLattice: list, size=40):
     rows = int(np.ceil(numPlots / 3))
     cols = min(3, numPlots)  # Ensure cols is at most 3
 
-    fig = plt.figure(figsize=(10*cols, 10*rows))
+    fig = plt.figure(figsize=(3*cols, 3*rows))
     gs = gridspec.GridSpec(rows, cols + 1, width_ratios=[1]*cols + [0.05])
 
     ax = [fig.add_subplot(gs[i, j]) for i in range(rows) for j in range(cols)]
@@ -276,8 +276,10 @@ def latticeGraph(squareLattice: list, size=40):
 # DENSE NEURAL NETWORKS
 
 class DenseNeuralNetworkGen:
-    def __init__(self, input_shape, num_classes, layers=None):
+    def __init__(self):
         self.model = Sequential()
+
+    def build_model(self, input_shape, num_classes, layers=None):
         if layers is None:
             layers = [
                 {'type': 'conv', 'filters': 32, 'kernel_size': 3, 'activation': 'relu', 'pool_size': 2},
@@ -292,9 +294,13 @@ class DenseNeuralNetworkGen:
             if layer_type == 'conv':
                 if i == 0:
                     self.model.add(Conv2D(layer['filters'], layer['kernel_size'], 
-                                        activation=layer['activation'], input_shape=input_shape))
+                                        activation=layer['activation'],
+                                        kernel_regularizer=layer.get('kernel_regularizer'),
+                                        input_shape=input_shape))
                 else:
-                    self.model.add(Conv2D(layer['filters'], layer['kernel_size'], activation=layer['activation']))
+                    self.model.add(Conv2D(layer['filters'], layer['kernel_size'],
+                                        kernel_regularizer=layer.get('kernel_regularizer'),
+                                        activation=layer['activation']))
                 if layer.get('pool_size') is not None:
                     self.model.add(MaxPooling2D(pool_size=layer['pool_size']))
             elif layer_type == 'convTranspose':
@@ -302,17 +308,23 @@ class DenseNeuralNetworkGen:
                     self.model.add(Conv2DTranspose(layer['filters'], layer['kernel_size'], 
                                                 strides=layer.get('strides', (1, 1)), 
                                                 padding=layer.get('padding', 'valid'), 
-                                                activation=layer['activation'], input_shape=input_shape))
+                                                activation=layer['activation'],
+                                                kernel_regularizer=layer.get('kernel_regularizer'),
+                                                input_shape=input_shape))
                 else:
                     self.model.add(Conv2DTranspose(layer['filters'], layer['kernel_size'], 
                                                 strides=layer.get('strides', (1, 1)), 
                                                 padding=layer.get('padding', 'valid'), 
-                                                activation=layer['activation']))
+                                                activation=layer['activation'],
+                                                kernel_regularizer=layer.get('kernel_regularizer')))
             elif layer_type == 'dense':
                 if i == 0:
-                    self.model.add(Dense(layer['units'], activation=layer['activation'], input_shape=input_shape))
+                    self.model.add(Dense(layer['units'], activation=layer['activation'], 
+                                        kernel_regularizer=layer.get('kernel_regularizer'),
+                                        input_shape=input_shape))
                 else:
-                    self.model.add(Dense(layer['units'], activation=layer['activation']))
+                    self.model.add(Dense(layer['units'], activation=layer['activation'],
+                                        kernel_regularizer=layer.get('kernel_regularizer')))
             elif layer_type == 'flatten':
                 self.model.add(Flatten())
             elif layer_type == 'dropout':
@@ -327,33 +339,31 @@ class DenseNeuralNetworkGen:
     def compile(self, optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy']):
         self.model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
-    def fit(self, x_train, y_train, epochs=10, batch_size=32, validation_data=None, callbacks=None):
+    def fit(self, x_train, y_train, 
+            epochs=10, batch_size=32, 
+            validation_data=None, 
+            callbacks=None,
+            verbose=True):
         self.model.fit(x_train, y_train, epochs=epochs, 
-                    batch_size=batch_size, 
+                    batch_size=batch_size,
                     validation_data=validation_data, 
-                    callbacks=callbacks)
+                    callbacks=callbacks,
+                    verbose=verbose)
 
     def evaluate(self, x_test, y_test):
         return self.model.evaluate(x_test, y_test)
 
     def predict(self, x, verbose=True):
         return self.model.predict(x, verbose=verbose)
-    '''
-    def model_saver(self, name):
-        if name_of_file[-3:] != 'h5':
-            name_of_file += '.h5'
 
-        if not os.path.exists('models'):
-            os.makedirs('models')
-        path = os.path.join(os.getcwd(), 'models', name)
-        self.model.save(path)
-    '''
-    def model_saver(self, name_of_file, directory=None):
-        if name_of_file[-3:] != 'h5':
+    # Save model
+    def save_model(self, name_of_file, directory=None):
+        if name_of_file[-3:] != '.h5':
             name_of_file += '.h5'
 
         if directory is None:
             directory = datetime.now().strftime('%Y-%m-%d')
+        
             directory = os.path.join(directory, 'models')
 
         if not os.path.exists(directory):
@@ -368,17 +378,42 @@ class DenseNeuralNetworkGen:
         self.model.save(file_path)
         print("Model saved as", file_path)
     
-    def weights_saver(self, name):
-        if name[-3:] != 'h5':
-            name += '.h5'
-        if not os.path.exists('models'):
-            os.makedirs('models')
-        path = os.path.join(os.getcwd(), 'models')
-        self.model.save_weights(os.path.join(path, f'{name}_weights.h5'))
+    def save_weights(self, name, directory=None):
+        if directory is None:
+            directory = datetime.now().strftime('%Y-%m-%d')
+            directory = os.path.join(directory, 'models')
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        self.model.save_weights(os.path.join(directory, f'{name}_weights.h5'))
 
-    def load_weights(self, name):
-        path = os.path.join(os.getcwd(), 'models')
-        self.model.load_weights(os.path.join(path, f'{name}_weights.h5'))
+    # Load model
+    def load_model(self, name, directory=None):
+        if directory is None:
+            directory = datetime.now().strftime('%Y-%m-%d')
+            directory = os.path.join(directory, 'models')
+        model_path = os.path.join(directory, f'{name}.h5')
+
+        try:
+            self.model = keras_load_model(model_path)
+            print(f'Model "{name}" correctly loaded from {model_path}')
+        except Exception as e:
+            print(f"Failed to load the model from {model_path}: {e}")
+            self.model = None
+
+    def load_weights(self, name, directory=None):
+        if directory is None:
+            directory = datetime.now().strftime('%Y-%m-%d')
+            directory = os.path.join(directory, 'models')
+        weights_path = os.path.join(directory, f'{name}_weights.h5')
+
+        if self.model is not None:
+            try:
+                self.model.load_weights(weights_path)
+                print(f'Weights of the model "{name}" correctly loaded from {weights_path}')
+            except Exception as e:
+                print(f"Failed to load weights from {weights_path}: {e}")
+        else:
+            print("Error: Model is not loaded. Cannot load weights.")
 
     def summary(self):
         self.model.summary()
