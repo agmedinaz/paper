@@ -362,9 +362,7 @@ class DenseNeuralNetworkGen:
             name_of_file += '.h5'
 
         if directory is None:
-            directory = datetime.now().strftime('%Y-%m-%d')
-        
-            directory = os.path.join(directory, 'models')
+            directory = os.path.join(os.getcwd(), 'models', datetime.now().strftime('%Y-%m-%d'))
 
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -374,14 +372,13 @@ class DenseNeuralNetworkGen:
         name_suffix = len(existing_files) + 1
         name = f"{base_name}_run{name_suffix}.h5"  # if we want to do more than one run for the same model.
 
-        file_path = os.path.join(os.getcwd(), directory, name_of_file)
+        file_path = os.path.join(directory, name_of_file)
         self.model.save(file_path)
         print("Model saved as", file_path)
     
     def save_weights(self, name, directory=None):
         if directory is None:
-            directory = datetime.now().strftime('%Y-%m-%d')
-            directory = os.path.join(directory, 'models')
+            directory = os.path.join(os.getcwd(), 'models', datetime.now().strftime('%Y-%m-%d'))
         if not os.path.exists(directory):
             os.makedirs(directory)
         self.model.save_weights(os.path.join(directory, f'{name}_weights.h5'))
@@ -389,8 +386,7 @@ class DenseNeuralNetworkGen:
     # Load model
     def load_model(self, name, directory=None):
         if directory is None:
-            directory = datetime.now().strftime('%Y-%m-%d')
-            directory = os.path.join(directory, 'models')
+            directory = os.path.join(os.getcwd(), 'models', datetime.now().strftime('%Y-%m-%d'))
         model_path = os.path.join(directory, f'{name}.h5')
 
         try:
@@ -402,8 +398,7 @@ class DenseNeuralNetworkGen:
 
     def load_weights(self, name, directory=None):
         if directory is None:
-            directory = datetime.now().strftime('%Y-%m-%d')
-            directory = os.path.join(directory, 'models')
+            directory = os.path.join(os.getcwd(), 'models', datetime.now().strftime('%Y-%m-%d'))
         weights_path = os.path.join(directory, f'{name}_weights.h5')
 
         if self.model is not None:
@@ -452,8 +447,7 @@ def predictor(L, model, sim_images, neurons,
         prediction += model.predict(sim_im, verbose=verbose)/len(sim_images)
 
     if directory is None:
-        directory = datetime.now().strftime('%Y-%m-%d')
-        directory = os.path.join(directory, 'predictions')
+        directory = os.path.join(os.getcwd(), 'predictions', datetime.now().strftime('%Y-%m-%d'))
 
     if not os.path.exists(directory):
         os.makedirs(directory)
@@ -470,11 +464,13 @@ def predictor(L, model, sim_images, neurons,
 def folders(directory=None):
 
     if directory is None:
-        resultsfolder = os.path.join(os.getcwd(), datetime.now().strftime('%Y-%m-%d') , 'predictions')
-        modelsfolder = os.path.join(os.getcwd(), datetime.now().strftime('%Y-%m-%d') , 'models')
+        resultsfolder = os.path.join(os.getcwd(), 'predictions',
+                                    datetime.now().strftime('%Y-%m-%d'))
+        modelsfolder = os.path.join(os.getcwd(), 'models', 
+                                    datetime.now().strftime('%Y-%m-%d'))
     else:
-        resultsfolder = os.path.join(os.getcwd(), directory, 'predictions')
-        modelsfolder = os.path.join(os.getcwd(), directory, 'models')
+        resultsfolder = os.path.join(os.getcwd(), 'predictions', directory)
+        modelsfolder = os.path.join(os.getcwd(), 'models', directory)
 
     os.makedirs(resultsfolder, exist_ok = True)
     os.makedirs(modelsfolder, exist_ok = True)
