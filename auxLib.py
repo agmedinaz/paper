@@ -357,12 +357,17 @@ class DenseNeuralNetworkGen:
         return self.model.predict(x, verbose=verbose)
 
     # Save model
-    def save_model(self, name_of_file, directory=None):
+    def save_model(self, name_of_file, training=['para', 'ferro', 'neel', 'stripe'],
+                    directory=None):
+        
+        name_folder = name_of_folder(training)
+
         if name_of_file[-3:] != '.h5':
             name_of_file += '.h5'
 
         if directory is None:
-            directory = os.path.join(os.getcwd(), 'models', datetime.now().strftime('%Y-%m-%d'))
+            directory = os.path.join(os.getcwd(), 'DNN', name_folder,
+                                    'models', datetime.now().strftime('%Y-%m-%d'))
 
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -376,17 +381,26 @@ class DenseNeuralNetworkGen:
         self.model.save(file_path)
         print("Model saved as", file_path)
     
-    def save_weights(self, name, directory=None):
+    def save_weights(self, name, 
+                    training=['para', 'ferro', 'neel', 'stripe'],
+                    directory=None):
+        name_folder = name_of_folder(training)
         if directory is None:
-            directory = os.path.join(os.getcwd(), 'models', datetime.now().strftime('%Y-%m-%d'))
+            directory = os.path.join(os.getcwd(), 'DNN', name_folder,
+                                    'models', datetime.now().strftime('%Y-%m-%d'))
         if not os.path.exists(directory):
             os.makedirs(directory)
         self.model.save_weights(os.path.join(directory, f'{name}_weights.h5'))
 
     # Load model
-    def load_model(self, name, directory=None):
+    def load_model(self, name, training=['para', 'ferro', 'neel', 'stripe'], 
+                directory=None):
+        
+        name_folder = name_of_folder(training)
+
         if directory is None:
-            directory = os.path.join(os.getcwd(), 'models', datetime.now().strftime('%Y-%m-%d'))
+            directory = os.path.join(os.getcwd(), 'DNN', name_folder,
+                                    'models', datetime.now().strftime('%Y-%m-%d'))
         model_path = os.path.join(directory, f'{name}.h5')
 
         try:
@@ -396,9 +410,13 @@ class DenseNeuralNetworkGen:
             print(f"Failed to load the model from {model_path}: {e}")
             self.model = None
 
-    def load_weights(self, name, directory=None):
+    def load_weights(self, name, 
+                    training=['para', 'ferro', 'neel', 'stripe'],
+                    directory=None):
+        name_folder = name_of_folder(training)
         if directory is None:
-            directory = os.path.join(os.getcwd(), 'models', datetime.now().strftime('%Y-%m-%d'))
+            directory = os.path.join(os.getcwd(), 'DNN', 
+                                    name_folder, 'models', datetime.now().strftime('%Y-%m-%d'))
         weights_path = os.path.join(directory, f'{name}_weights.h5')
 
         if self.model is not None:
@@ -423,10 +441,6 @@ class myCallback(keras.callbacks.Callback):
             self.model.stop_training = True
 
 
-
-
-
-
 # PREDICTOR
 
 def predictor(L, model, sim_images, neurons, 
@@ -438,6 +452,8 @@ def predictor(L, model, sim_images, neurons,
 
     verbose: if we want to see the progress of the prediction.
     '''
+    name_folder = name_of_folder(training)
+
     if reshape:
         sim_images = [array.reshape((251, L*L)) for array in sim_images]
         
@@ -448,7 +464,8 @@ def predictor(L, model, sim_images, neurons,
         prediction += model.predict(sim_im, verbose=verbose)/len(sim_images)
 
     if directory is None:
-        directory = os.path.join(os.getcwd(), 'predictions', datetime.now().strftime('%Y-%m-%d'))
+        directory = os.path.join(os.getcwd(), 'DNN', name_folder, 
+                                'predictions', datetime.now().strftime('%Y-%m-%d'))
 
     if not os.path.exists(directory):
         os.makedirs(directory)
@@ -463,19 +480,41 @@ def predictor(L, model, sim_images, neurons,
     return prediction
 
 
-def folders(directory=None):
+def folders(directory=None, training=['para', 'ferro', 'neel', 'stripe']):
+
+    name_folder = name_of_folder(training)
+
+    resultsfolder = os.path.join(os.getcwd(), 'DNN', name_folder, 'predictions')
+    modelsfolder = os.path.join(os.getcwd(), 'DNN', name_folder, 'models')
 
     if directory is None:
-        resultsfolder = os.path.join(os.getcwd(), 'predictions',
-                                    datetime.now().strftime('%Y-%m-%d'))
-        modelsfolder = os.path.join(os.getcwd(), 'models', 
-                                    datetime.now().strftime('%Y-%m-%d'))
+        resultsfolder = os.path.join(resultsfolder, datetime.now().strftime('%Y-%m-%d'))
+        modelsfolder = os.path.join(modelsfolder, datetime.now().strftime('%Y-%m-%d'))
     else:
-        resultsfolder = os.path.join(os.getcwd(), 'predictions', directory)
-        modelsfolder = os.path.join(os.getcwd(), 'models', directory)
+        resultsfolder = os.path.join(resultsfolder, directory)
+        modelsfolder = os.path.join(modelsfolder, directory)
 
     os.makedirs(resultsfolder, exist_ok = True)
     os.makedirs(modelsfolder, exist_ok = True)
     return modelsfolder, resultsfolder
+
+def name_of_folder(training=['para', 'ferro', 'neel', 'stripe']):
+
+    if training == ['all']:
+        training = ['para', 'ferro', 'neel', 'stripe']
+        
+    training_names = {'para': 'Para', 'ferro': 'Ferro', 'neel': 'Neel', 'stripe': 'Stripe'}
+
+    name_of_folder = ''
+
+    for name in training:
+        if name_of_folder != '':
+            name_of_folder += '_'
+        name_of_folder += training_names[name]
+
+    if name_of_folder=='Para_Ferro_Neel_Stripe':
+        name_of_folder = 'All'
+
+    return name_of_folder
 
 print("Library successfully imported")
