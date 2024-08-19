@@ -430,6 +430,7 @@ class myCallback(keras.callbacks.Callback):
 # PREDICTOR
 
 def predictor(L, model, sim_images, neurons, 
+            training=['para', 'ferro', 'neel', 'stripe'],
                         directory=None, reshape = True, 
                         verbose=False, save_prediction=False):
     '''
@@ -451,11 +452,12 @@ def predictor(L, model, sim_images, neurons,
 
     if not os.path.exists(directory):
         os.makedirs(directory)
-        
+    
     if save_prediction:
         temperature = np.arange(0.0, 5.02, 0.02).reshape(251,1)#.tolist()
+        columns = ['Temperature'] + training
         combined_array = np.concatenate((temperature, prediction), axis=1) #np.hstack((temperature, prediction))
-        prediction_df = pd.DataFrame(combined_array, columns=['Temperature', 'Paramagnetic', 'Ferromagnetic', 'Neel', 'Stripe'])
+        prediction_df = pd.DataFrame(combined_array, columns=columns)
         prediction_df.to_csv(os.path.join(os.getcwd(), directory, f'predictions_{neurons}.csv'), index=False)
     
     return prediction
