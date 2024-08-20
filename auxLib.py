@@ -483,11 +483,15 @@ def predictor(L, model, sim_images, neurons,
     return prediction
 
 
-def folders(directory=None, training=['para', 'ferro', 'neel', 'stripe']):
+def folders(directory=None, training=['para', 'ferro', 'neel', 'stripe'], percolation=False):
 
     name_folder = name_of_folder(training)
 
-    resultsfolder = os.path.join(os.getcwd(), 'DNN', name_folder, 'predictions')
+    if percolation==True:
+        resultsfolder = os.path.join(os.getcwd(), 'DNN', name_folder, 'percolation')
+    else:
+        resultsfolder = os.path.join(os.getcwd(), 'DNN', name_folder, 'predictions')
+        
     modelsfolder = os.path.join(os.getcwd(), 'DNN', name_folder, 'models')
 
     if directory is None:
