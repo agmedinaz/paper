@@ -17,6 +17,9 @@ from tqdm import tqdm
 from datetime import datetime
 
 
+from scipy.optimize import curve_fit # We will use scipy to determine the critical temperature
+
+
 print("Importing library...")
 
 
@@ -516,5 +519,84 @@ def name_of_folder(training=['para', 'ferro', 'neel', 'stripe']):
         name_of_folder = 'All'
 
     return name_of_folder
+
+
+# Functions to determine temperature
+
+# Half-height criteria
+
+
+def constant_func(x, b):
+    return np.full_like(x, b)
+
+
+def half_height(folder, name=None, prediction=None, graph=False):
+    temperature = np.arange(0.0, 5.02, 0.02).tolist()
+
+    if graph:
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+        names = ['Paramagnetic', 'Ferromagnetic', 'Néel', 'Stripe']
+        plt.figure(figsize=(7, 7))
+
+    list_of_features = []
+    if prediction is None:
+        prediction_df = pd.read_csv(os.path.join(folder,f'{name}.csv'))#, header=0)
+    else:
+        prediction_df = prediction
+    names_df = prediction_df.columns
+
+    if 'para' in names_df:
+        para = prediction_df['para'].to_numpy(float)
+        list_of_features.append(para)
+    if 'ferro' in names_df:
+        ferro = prediction_df['ferro'].to_numpy(float)
+        list_of_features.append(ferro)
+    if 'neel' in names_df:
+        neel = prediction_df['neel'].to_numpy(float)
+        list_of_features.append(neel)
+    if 'stripe' in names_df:
+        stripe = prediction_df['stripe'].to_numpy(float)
+        list_of_features.append(stripe)
+    temperature = prediction_df['Temperature'].to_numpy(float)
+
+    index_temp_1 = np.where(temperature == 1)[0][0]
+    
+    index_temp_4 = np.where(temperature == 4)[0][0]
+    
+    tc = []
+
+    for index, feature in enumerate(list_of_features):
+        
+        popt_first, pcov_first = curve_fit(constant_func, temperature[:index_temp_1+1], feature[:index_temp_1+1])
+        popt_last, pcov_last = curve_fit(constant_func, temperature[index_temp_4:], feature[index_temp_4:])
+        half_of_height = (popt_first[0]+popt_last[0])/2
+        closest_index = np.abs(feature - half_of_height *np.ones_like(feature)).argmin()
+        closest_x = temperature[closest_index]
+        tc.append(closest_x)
+
+        if graph:
+            color = colors[index]
+            plt.plot(temperature, feature, 'x-', markerfacecolor=None, markersize=7, label = f'{names[index]}', color=color, alpha=0.5)
+            plt.plot(temperature[:(np.where(temperature == 2)[0][0])], constant_func(temperature[:(np.where(temperature == 2)[0][0])], *popt_first), color=color)
+            plt.plot(temperature[(np.where(temperature == 2)[0][0]):], constant_func(temperature[(np.where(temperature == 2)[0][0]):], *popt_last), color=color)
+            plt.axvline(x=closest_x, color = color, linestyle = '--')
+    
+    if graph:
+        plt.legend()
+        plot = plt
+    
+    mean_temperature = np.mean(tc)
+
+	# finding an outlier:
+    probably_outlier = np.abs(tc - mean_temperature).max()
+    probably_outlier = probably_outlier/np.mean(tc)
+    probably_outlier_index = np.abs(tc - mean_temperature).argmax()
+    if probably_outlier>0.1:
+        tc.remove(tc[probably_outlier_index])
+    mean_temperature = np.mean(tc)
+
+    return mean_temperature, plot
+
+
 
 print("Library successfully imported")
